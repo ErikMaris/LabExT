@@ -10,14 +10,10 @@ from enum import Enum
 from tkinter import TclError
 from typing import List
 
-from LabExT.Movement.Stage import Stage, assert_driver_loaded, StageError, assert_stage_connected #, StageMeta
+from LabExT.Movement.Stage import Stage, assert_driver_loaded, StageError, assert_stage_connected
 from LabExT.View.Controls.DriverPathDialog import DriverPathDialog
 
-# # Erik
-# import sys
-# sys.path.append("C:\SmarAct\MCS2\SDK\Python\packages") 
-# import smaract.ctl as ctl # Erik
-
+from LabExT.Utils import try_to_lift_window
 
 try:
     import smaract.ctl as ctl
@@ -31,7 +27,6 @@ class Axis(Enum):
     X = 0
     Y = 1
     Z = 2
-
 
 class Stage3DSmarActMCS2(Stage):
     """Implementation of a SmarAct stage. Communication with the devices using the driver version 2.
@@ -50,30 +45,21 @@ class Stage3DSmarActMCS2(Stage):
     # )
 
     @classmethod
-    def load_driver(cls, parent=None) -> bool:
+    def load_driver(cls, parent) -> bool:
         """
-        Loads driver SmarAct by open a dialog to specify the driver path. This method will be invoked by the
-        MovementWizardController.
+        Loads driver for SmarAct by open a dialog to specifiy the driver path. This method will be invoked by the StageWizard.
         """
-        if cls.driver_path_dialog is not None:
-            try:
-                cls.driver_path_dialog.deiconify()
-                cls.driver_path_dialog.lift()
-                cls.driver_path_dialog.focus_set()
-
-                parent.wait_window(cls.driver_path_dialog)
-                return cls.driver_path_dialog.path_has_changed
-            except TclError:
-                pass
+        if try_to_lift_window(cls.driver_path_dialog):
+            parent.wait_window(cls.driver_path_dialog)
+            return cls.driver_path_dialog.path_has_changed
 
         cls.driver_path_dialog = DriverPathDialog(
             parent,
-            settings_file_path='mcsc_module_path.txt',
-            title='Stage Driver Settings',
-            label='SmarAct MCSControl driver module path',
-            hint='Specify the directory where the module MCSControl_PythonWrapper is found.\nThis is external software,'
-            'provided by SmarAct GmbH and is available from them. See https://smaract.com.'
-        )
+            settings_file_path="mcsc_module_path.txt",
+            title="Stage Driver Settings",
+            label="SmarAct MCSControl driver module path",
+            hint="Specify the directory where the module MCSControl_PythonWrapper is found.\nThis is external software,"
+            "provided by SmarAct GmbH and is available from them. See https://smaract.com.")
         parent.wait_window(cls.driver_path_dialog)
 
         return cls.driver_path_dialog.path_has_changed
@@ -372,7 +358,7 @@ class Stage3DSmarActMCS2(Stage):
         x_speed = self.channels[Axis.X].speed
         y_speed = self.channels[Axis.Y].speed
 
-        if x_speed != y_speed:
+        if (x_speed != y_speed):
             self._logger.info('Speed settings of x and y channel are not equal.')
 
         return x_speed
@@ -413,8 +399,12 @@ class Stage3DSmarActMCS2(Stage):
     def get_acceleration_xy(self) -> float:
         """Returns the acceleration set at the stage for the x and y direction in um/s^2. """
         x_acceleration = self.channels[Axis.X].acceleration
-        if x_acceleration != self.channels[Axis.Y].acceleration:
-            self._logger.info('Acceleration settings of x and y channel are not equal.')
+        y_acceleration = self.channels[Axis.Y].acceleration
+
+        if (x_acceleration != y_acceleration):
+            self._logger.info(
+                'Acceleration settings of x and y channel are not equal.')
+
         return x_acceleration
 
     @assert_driver_loaded
@@ -429,86 +419,16 @@ class Stage3DSmarActMCS2(Stage):
         """
         self._z_axis_direction = -self._z_axis_direction
 
+    @property
+    @assert_driver_loaded
+    @assert_stage_connected
+    def is_stopped(self) -> bool:
+        """
+        Returns true if all axis are stopped.
+        """
+        return NotImplementedError
+
     # Movement Methods
-
-    @assert_driver_loaded
-    @assert_stage_connected
-    def wiggle_z_axis_positioner(self) -> None:
-        """
-        Wiggles the z axis positioner in order to enable the user to set the correct direction of the z movement
-
-        Should first move "up" i.e. into direction of _z_axis_direction, then "down", i.e. against _z_axis_direction.
-        """
-        z_channel = self.channels[Axis.Z]
-        previous_speed = self.get_speed_z()
-        self.set_speed_z(1e3)
-
-        # Move up relative
-        z_channel.move(value=self._z_axis_direction * 1e3, mode=ctl.MoveMode.CL_RELATIVE)
-
-        time.sleep(1)
-
-        # Move down relative
-        z_channel.move(value=-self._z_axis_direction * 1e3, mode=ctl.MoveMode.CL_RELATIVE)
-        self._wait_for_stopping()
-
-        self.set_speed_z(previous_speed)
-
-    @assert_driver_loaded
-    @assert_stage_connected
-    def lift_stage(self, wait_for_stopping: bool = True) -> None:
-        """Lifts the stage up in the z direction by the amount defined in self._z_lift ."""
-        if self._stage_lifted_up:
-            self._logger.warning('Stage already lifted up. Not executing lift.')
-            return
-
-        self.channels[Axis.Z].move(value=self._z_axis_direction * self._z_lift, mode=ctl.MoveMode.CL_RELATIVE)
-        if wait_for_stopping:
-            self._wait_for_stopping()
-
-        self._stage_lifted_up = True
-
-    @assert_driver_loaded
-    @assert_stage_connected
-    def lower_stage(self, wait_for_stopping: bool = True) -> None:
-        """Lowers the stage in the z direction by the amount defined by self._z_lift ."""
-        if not self._stage_lifted_up:
-            self._logger.warning('Stage already lowered down. Not executing lowering.')
-            return
-
-        self.channels[Axis.Z].move(value=-self._z_axis_direction * self._z_lift, mode=ctl.MoveMode.CL_RELATIVE)
-        if wait_for_stopping:
-            self._wait_for_stopping()
-
-        self._stage_lifted_up = False
-
-    def get_lift_distance(self) -> float:
-        """Returns the set value of how much the stage moves up in [um]."""
-        return self._z_lift
-
-    def set_lift_distance(self, height: float) -> None:
-        """Sets the value of how much the stage moves up in [um]. """
-        height = float(height)
-        assert height >= 0., 'Lift distance must be non-negative.'
-        self._z_lift = height
-
-    @assert_driver_loaded
-    @assert_stage_connected
-    def get_current_position(self) -> list:
-        """Get current position of the stages micrometers.
-
-        Returns
-        -------
-        list
-            Returns current position in [x,y] format in units of um.
-        """
-        warnings.warn(
-            'This method is deprecated and will be removed in the future. Please use the get_position() method.',
-            category=DeprecationWarning)
-        return [
-            self.channels[Axis.X].position,
-            self.channels[Axis.Y].position
-        ]
 
     @assert_driver_loaded
     @assert_stage_connected
@@ -553,57 +473,18 @@ class Stage3DSmarActMCS2(Stage):
 
     @assert_driver_loaded
     @assert_stage_connected
-    def move_absolute(self, *args, **kwargs) -> None:
+    def move_absolute(self, x: float = None, y: float = None, z: float = None, wait_for_stopping: bool = True) -> None:
         """
         Performs an absolute movement to the specified position in units of micrometers.
-
-        Attention: This method supports two method signatures to temporarily support the old version (v1)
-        and the new version (v2).
         """
-        wait_for_stopping = kwargs.get('wait_for_stopping', True)
-        if isinstance(args[0], list):
-            self._move_absolute_v1(args[0][:2], wait_for_stopping)
-        else:
-            self._move_absolute_v2(*args, wait_for_stopping)
-
-    # Stage control
-
-    @assert_driver_loaded
-    @assert_stage_connected
-    def stop(self):
-        for channel in self.channels.values():
-            channel.stop()
-
-    # Move absolute methods
-    # Temporarily, two different methods for absolute movement are supported.
-
-    def _move_absolute_v1(self, pos, wait_for_stopping: bool = True):
-        warnings.warn(
-            'This method is deprecated and will be removed in the future. Please use the new signature.',
-            category=DeprecationWarning)
-
-        self._logger.debug(f'Want to absolute move {self.address} to x = {pos[0]} um and y = {pos[1]} um')
-
-        self.channels[Axis.X].move(value=pos[0], mode=ctl.MoveMode.CL_ABSOLUTE)
-        self.channels[Axis.Y].move(value=pos[1], mode=ctl.MoveMode.CL_ABSOLUTE)
-
-        if wait_for_stopping:
-            self._wait_for_stopping()
-
-    def _move_absolute_v2(
-            self,
-            x: float = None,
-            y: float = None,
-            z: float = None,
-            wait_for_stopping: bool = True) -> None:
-        self._logger.debug(f'Want to absolute move {self.address} to x = {x} um, y = {y} um and z = {z} um')
+        self._logger.debug(f'Want to absolute move {self.address} to x = {x}, y = {y}, z = {z}')
 
         if x is not None:
-            self.channels[Axis.X].move(value=x, mode=ctl.MoveMode.CL_ABSOLUTE)
+            self.channels[Axis.X].move(diff=x, mode=ctl.MoveMode.CL_ABSOLUTE)
         if y is not None:
-            self.channels[Axis.Y].move(value=y, mode=ctl.MoveMode.CL_ABSOLUTE)
+            self.channels[Axis.Y].move(diff=y, mode=ctl.MoveMode.CL_ABSOLUTE)
         if z is not None:
-            self.channels[Axis.Z].move(value=z, mode=ctl.MoveMode.CL_ABSOLUTE)
+            self.channels[Axis.Z].move(diff=z, mode=ctl.MoveMode.CL_ABSOLUTE)
 
         if wait_for_stopping:
             self._wait_for_stopping()
