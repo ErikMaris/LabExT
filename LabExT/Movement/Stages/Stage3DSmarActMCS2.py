@@ -254,11 +254,6 @@ class Stage3DSmarActMCS2(Stage):
         """
         self.handle = None
         self.channels = {}
-
-        # LEGACY: stage lift
-        self._z_lift = 20
-        self._stage_lifted_up = False
-        self._z_axis_direction = 1
         super().__init__(address)
 
     def __str__(self) -> str:
@@ -313,22 +308,6 @@ class Stage3DSmarActMCS2(Stage):
         ctl.Close(self.handle)
         self.connected = False
         self.handle = None
-
-    # Properties
-
-    @property
-    def z_axis_direction(self) -> int:
-        return self._z_axis_direction
-
-    @z_axis_direction.setter
-    def z_axis_direction(self, new_dir: int) -> None:
-        if new_dir not in [-1, 1]:
-            raise ValueError('Z axis direction can only be 1 or -1')
-        self._z_axis_direction = new_dir
-
-    @property
-    def stage_lifted_up(self) -> bool:
-        return self._stage_lifted_up
 
     # Stage settings methods
 
@@ -412,12 +391,6 @@ class Stage3DSmarActMCS2(Stage):
     def get_status(self) -> tuple:
         """Returns the channel status codes translated into strings as tuple for each channel."""
         return tuple(ch.humanized_status for ch in self.channels.values())
-
-    def invert_z_axis(self) -> None:
-        """
-        toggles the _z_axis_direction between -1 and +1
-        """
-        self._z_axis_direction = -self._z_axis_direction
 
     @property
     @assert_driver_loaded
