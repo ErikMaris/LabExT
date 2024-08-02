@@ -105,7 +105,7 @@ class MovementWizardView(Wizard):
         if not self.mover.stage_classes:
             Label(frame, text="No stage classes found!").pack(side=TOP, fill=X)
 
-        for stage_class in self.mover.stage_classes:
+        for stage_class in self.mover.stage_classes.values(): # loop over values (classes) in dict
             stage_driver_frame = Frame(frame)
             stage_driver_frame.pack(side=TOP, fill=X, pady=2)
 
@@ -113,13 +113,13 @@ class MovementWizardView(Wizard):
                 stage_driver_frame,
                 text="[{}] {}".format(
                     stage_class.__name__,
-                    stage_class.meta.description))
+                    stage_class.description))
             stage_driver_label.pack(side=LEFT, fill=X)
 
             stage_driver_load = Button(
                 stage_driver_frame,
                 text="Load Driver",
-                state=NORMAL if stage_class.meta.driver_specifiable else DISABLED,
+                state=NORMAL if stage_class.driver_specifiable else DISABLED,
                 command=partial(
                     self.controller.load_driver,
                     stage_class))
@@ -167,7 +167,7 @@ class MovementWizardView(Wizard):
             ),
             rows=[
                 (idx,
-                 s.__class__.meta.description,
+                 s.__class__.description,
                  s.__class__.__name__,
                  s.address_string,
                  s.connected)

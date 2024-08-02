@@ -15,7 +15,7 @@ from LabExT.Movement.MoverNew import MoverError, MoverNew
 
 
 class MovementWizardController:
-    def __init__(self, experiment_manager, mover, parent=None) -> None:
+    def __init__(self, parent, mover, experiment_manager=None) -> None:
         self.experiment_manager = experiment_manager
         self.mover: Type[MoverNew] = mover
         self.view = MovementWizardView(
