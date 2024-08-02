@@ -124,7 +124,8 @@ class Stage3DSmarActMCS2(Stage):
             "SL...D1SS",
             "SL...D1SC2",
             "SL...D1SC1",
-            "SL...D1ME"
+            "SL...D1ME",
+            "CT002/AT002"
         } if MCS_LOADED else {}
 
         def __init__(self, stage, index, name='Channel') -> None:
@@ -280,6 +281,13 @@ class Stage3DSmarActMCS2(Stage):
     @property
     def address_string(self) -> str:
         return self.address
+    
+    @property
+    def identifier(self) -> str:
+        """
+        Returns the address as identifier for a SmartAct stage
+        """
+        return self.address_string
 
     @assert_driver_loaded
     def connect(self) -> bool:
