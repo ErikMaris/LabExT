@@ -245,6 +245,7 @@ class LiveViewerController:
         data["measurement settings"] = cards_props
         data["values"] = OrderedDict()
         data["error"] = {}
+        data["references"] = {}
 
         for trace_key, plot_trace in self.model.traces_to_plot.items():
             this_card = trace_key[0]
@@ -252,6 +253,7 @@ class LiveViewerController:
             fqtn = f"{this_card.instance_title:s}: {trace_name:s}"
             data["values"][f"{fqtn:s}: y-values"] = deepcopy(plot_trace.y_values)
             data["values"][f"{fqtn:s}: timestamps"] = deepcopy(plot_trace.timestamps)
+            data["references"][fqtn] = plot_trace.reference_value
 
         data["finished"] = True
 
