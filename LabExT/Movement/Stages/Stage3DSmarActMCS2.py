@@ -391,7 +391,7 @@ class Stage3DSmarActMCS2(Stage):
     def get_status(self) -> tuple:
         """Returns the channel status codes translated into strings as tuple for each channel."""
         return tuple(ch.humanized_status for ch in self.channels.values())
-
+    
     @property
     @assert_driver_loaded
     @assert_stage_connected
@@ -399,7 +399,7 @@ class Stage3DSmarActMCS2(Stage):
         """
         Returns true if all axis are stopped.
         """
-        return NotImplementedError
+        return not any('ACTIVELY_MOVING' in status for status in self.get_status())
 
     # Movement Methods
 
@@ -480,5 +480,6 @@ class Stage3DSmarActMCS2(Stage):
         """Blocks until all channels have stopped moving."""
         while True:
             time.sleep(delay)
-            if not any('ACTIVELY_MOVING' in status for status in self.get_status()):
+
+            if self.is_stopped:
                 break
