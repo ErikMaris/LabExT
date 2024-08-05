@@ -39,10 +39,6 @@ class Stage3DSmarActMCS2(Stage):
 
     driver_loaded = MCS_LOADED
     driver_path_dialog = None
-    # meta = StageMeta(
-    #     description='SmarAct Modular Control System 2',
-    #     driver_specifiable=True
-    # )
 
     @classmethod
     def load_driver(cls, parent) -> bool:
@@ -97,7 +93,7 @@ class Stage3DSmarActMCS2(Stage):
 
         Methods
         -------
-        move(diff, mode):
+        move(value, mode):
             Moves the channel with the specified movement type by the value 'value'
         find_reference_mark():
             Finds reference mark of channel
@@ -453,11 +449,11 @@ class Stage3DSmarActMCS2(Stage):
         self._logger.debug(f'Want to absolute move {self.address} to x = {x}, y = {y}, z = {z}')
 
         if x is not None:
-            self.channels[Axis.X].move(diff=x, mode=ctl.MoveMode.CL_ABSOLUTE)
+            self.channels[Axis.X].move(value=x, mode=ctl.MoveMode.CL_ABSOLUTE)
         if y is not None:
-            self.channels[Axis.Y].move(diff=y, mode=ctl.MoveMode.CL_ABSOLUTE)
+            self.channels[Axis.Y].move(value=y, mode=ctl.MoveMode.CL_ABSOLUTE)
         if z is not None:
-            self.channels[Axis.Z].move(diff=z, mode=ctl.MoveMode.CL_ABSOLUTE)
+            self.channels[Axis.Z].move(value=z, mode=ctl.MoveMode.CL_ABSOLUTE)
 
         if wait_for_stopping:
             self._wait_for_stopping()
