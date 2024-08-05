@@ -301,8 +301,6 @@ class Stage6DSmarActMCS2(Stage):
         if self.handle is not None:
             for ch in self.Axis:
                 self.channels[ch] = self._Channel(self, ch.value, ch.name)
-            for ch in self.Axis:
-                self.channels[ch] = self._Channel(self, ch.value, ch.name)
 
             try:
                 self._raise_if_sensor_non_linear()
