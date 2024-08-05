@@ -22,13 +22,19 @@ except (ImportError, OSError):
     MCS_LOADED = False
 
 
-class Axis(Enum):
+class Axis_Ch123(Enum):
     """Enumerate different channels. Each channel represents one axis."""
     X = 0
     Y = 1
     Z = 2
 
-class Stage3DSmarActMCS2(Stage):
+class Axis_Ch456(Enum):
+    """Enumerate different channels. Each channel represents one axis."""
+    X = 3
+    Y = 4
+    Z = 5
+
+class Stage6DSmarActMCS2(Stage):
     """Implementation of a SmarAct stage. Communication with the devices using the driver version 2.
 
     Attributes
@@ -69,12 +75,19 @@ class Stage3DSmarActMCS2(Stage):
         buffer = ctl.FindDevices()
         if buffer:
             locators = buffer.split('\n')
-            def is_one_module(locator):
+            def is_two_modules(locator):
                 d_handle = ctl.Open(locator)
-                result = ctl.GetProperty_i32(d_handle, 0, ctl.Property.NUMBER_OF_BUS_MODULES) == 1
+                result = ctl.GetProperty_i32(d_handle, 0, ctl.Property.NUMBER_OF_BUS_MODULES) == 2
                 ctl.Close(d_handle)
                 return result
-            return [locator for locator in locators if is_one_module(locator)]
+            for ii,locator in enumerate(locators.copy()):
+                if is_two_modules(locator):
+                    locators[ii] = locator + '_Ch1-3'
+                    locators.append(locator + '_Ch4-6')
+                else:
+                    locators[ii] = []
+            locators = sorted(locators)
+            return locators
         return []
 
     class _Channel:
@@ -256,6 +269,14 @@ class Stage3DSmarActMCS2(Stage):
         """
         self.handle = None
         self.channels = {}
+        if "Ch1-3" in address:
+            self.Axis = Axis_Ch123
+            self.open_new_connection = True
+        elif "Ch4-6" in address:
+            self.Axis = Axis_Ch456
+            self.open_new_connection = False
+        else:
+            raise StageError('Stage address does not contain channel suffix.')
         super().__init__(address)
 
     def __str__(self) -> str:
@@ -281,11 +302,20 @@ class Stage3DSmarActMCS2(Stage):
         if self.connected:
             self._logger.debug('Stage is already connected.')
             return True
+        
+        if self.open_new_connection:
+            self.handle = self._open_system()
+            if self.handle is not 1:
+                raise StageError('Expected the handle to be 1.')
+        else:
+            self.handle = 1
 
-        self.handle = self._open_system()
         if self.handle is not None:
-            for ch in Axis:
+            for ch in self.Axis:
                 self.channels[ch] = self._Channel(self, ch.value, ch.name)
+            for ch in self.Axis:
+                self.channels[ch] = self._Channel(self, ch.value, ch.name)
+
             try:
                 self._raise_if_sensor_non_linear()
                 self.connected = True
@@ -307,7 +337,8 @@ class Stage3DSmarActMCS2(Stage):
     @assert_stage_connected
     def disconnect(self) -> None:
         """Disconnects stage by calling ctl.Close"""
-        ctl.Close(self.handle)
+        if self.open_new_connection:
+            ctl.Close(self.handle)
         self.connected = False
         self.handle = None
 
@@ -329,15 +360,15 @@ class Stage3DSmarActMCS2(Stage):
         umps : speed with which the stage will move in xy direction [um/s]
                 valid range: 0...1e5 um/s
         """
-        self.channels[Axis.X].speed = umps
-        self.channels[Axis.Y].speed = umps
+        self.channels[self.Axis.X].speed = umps
+        self.channels[self.Axis.Y].speed = umps
 
     @assert_driver_loaded
     @assert_stage_connected
     def get_speed_xy(self) -> float:
         """Returns the speed set at the stage for x and y direction in um/s."""
-        x_speed = self.channels[Axis.X].speed
-        y_speed = self.channels[Axis.Y].speed
+        x_speed = self.channels[self.Axis.X].speed
+        y_speed = self.channels[self.Axis.Y].speed
 
         if (x_speed != y_speed):
             self._logger.info('Speed settings of x and y channel are not equal.')
@@ -354,13 +385,13 @@ class Stage3DSmarActMCS2(Stage):
         umps : speed with which the stage will move in z direction [um/s]
                 valid range: 0...1e5 um/s
         """
-        self.channels[Axis.Z].speed = umps
+        self.channels[self.Axis.Z].speed = umps
 
     @assert_driver_loaded
     @assert_stage_connected
     def get_speed_z(self) -> float:
         """Returns the speed set at the stage for z direction in um/s."""
-        return self.channels[Axis.Z].speed
+        return self.channels[self.Axis.Z].speed
 
     @assert_driver_loaded
     @assert_stage_connected
@@ -372,15 +403,15 @@ class Stage3DSmarActMCS2(Stage):
         umps2 : float
             Acceleration measured in um/s^2
         """
-        self.channels[Axis.X].acceleration = umps2
-        self.channels[Axis.Y].acceleration = umps2
+        self.channels[self.Axis.X].acceleration = umps2
+        self.channels[self.Axis.Y].acceleration = umps2
 
     @assert_driver_loaded
     @assert_stage_connected
     def get_acceleration_xy(self) -> float:
         """Returns the acceleration set at the stage for the x and y direction in um/s^2. """
-        x_acceleration = self.channels[Axis.X].acceleration
-        y_acceleration = self.channels[Axis.Y].acceleration
+        x_acceleration = self.channels[self.Axis.X].acceleration
+        y_acceleration = self.channels[self.Axis.Y].acceleration
 
         if (x_acceleration != y_acceleration):
             self._logger.info(
@@ -417,9 +448,9 @@ class Stage3DSmarActMCS2(Stage):
         """
         # return [ch.position for ch in self.channels.values()]
         return [
-            self.channels[Axis.X].position,
-            self.channels[Axis.Y].position,
-            self.channels[Axis.Z].position
+            self.channels[self.Axis.X].position,
+            self.channels[self.Axis.Y].position,
+            self.channels[self.Axis.Z].position
         ]
 
     @assert_driver_loaded
@@ -439,9 +470,9 @@ class Stage3DSmarActMCS2(Stage):
             Wait until all aces have stopped.
         """
         self._logger.debug(f'Want to relative move {self.address} to x = {x}, y = {y}, z = {z}')
-        self.channels[Axis.X].move(value=x, mode=ctl.MoveMode.CL_RELATIVE)
-        self.channels[Axis.Y].move(value=y, mode=ctl.MoveMode.CL_RELATIVE)
-        self.channels[Axis.Z].move(value=z, mode=ctl.MoveMode.CL_RELATIVE)
+        self.channels[self.Axis.X].move(value=x, mode=ctl.MoveMode.CL_RELATIVE)
+        self.channels[self.Axis.Y].move(value=y, mode=ctl.MoveMode.CL_RELATIVE)
+        self.channels[self.Axis.Z].move(value=z, mode=ctl.MoveMode.CL_RELATIVE)
 
         if wait_for_stopping:
             self._wait_for_stopping()
@@ -455,11 +486,11 @@ class Stage3DSmarActMCS2(Stage):
         self._logger.debug(f'Want to absolute move {self.address} to x = {x}, y = {y}, z = {z}')
 
         if x is not None:
-            self.channels[Axis.X].move(value=x, mode=ctl.MoveMode.CL_ABSOLUTE)
+            self.channels[self.Axis.X].move(value=x, mode=ctl.MoveMode.CL_ABSOLUTE)
         if y is not None:
-            self.channels[Axis.Y].move(value=y, mode=ctl.MoveMode.CL_ABSOLUTE)
+            self.channels[self.Axis.Y].move(value=y, mode=ctl.MoveMode.CL_ABSOLUTE)
         if z is not None:
-            self.channels[Axis.Z].move(value=z, mode=ctl.MoveMode.CL_ABSOLUTE)
+            self.channels[self.Axis.Z].move(value=z, mode=ctl.MoveMode.CL_ABSOLUTE)
 
         if wait_for_stopping:
             self._wait_for_stopping()
@@ -467,7 +498,7 @@ class Stage3DSmarActMCS2(Stage):
     # Helper Methods
 
     def _open_system(self):
-        handle = ctl.Open(self.address)
+        handle = ctl.Open(self.address.removesuffix('_Ch1-3'))
         if handle:
             return handle
         return None
