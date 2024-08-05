@@ -5,11 +5,9 @@ LabExT  Copyright (C) 2024  ETH Zurich and Polariton Technologies AG
 This program is free software and comes with ABSOLUTELY NO WARRANTY; for details see LICENSE file.
 """
 import time
-import warnings
-from enum import Enum
-from tkinter import TclError
 from typing import List
 
+from LabExT.Movement.config import Axis
 from LabExT.Movement.Stage import Stage, assert_driver_loaded, StageError, assert_stage_connected
 from LabExT.View.Controls.DriverPathDialog import DriverPathDialog
 
@@ -20,13 +18,6 @@ try:
     MCS_LOADED = True
 except (ImportError, OSError):
     MCS_LOADED = False
-
-
-class Axis(Enum):
-    """Enumerate different channels. Each channel represents one axis."""
-    X = 0
-    Y = 1
-    Z = 2
 
 class Stage3DSmarActMCS2(Stage):
     """Implementation of a SmarAct stage. Communication with the devices using the driver version 2.

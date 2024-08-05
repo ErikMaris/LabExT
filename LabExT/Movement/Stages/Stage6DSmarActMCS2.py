@@ -10,6 +10,7 @@ from enum import Enum
 from tkinter import TclError
 from typing import List
 
+from LabExT.Movement.config import Axis_Ch123, Axis_Ch456
 from LabExT.Movement.Stage import Stage, assert_driver_loaded, StageError, assert_stage_connected
 from LabExT.View.Controls.DriverPathDialog import DriverPathDialog
 
@@ -20,19 +21,6 @@ try:
     MCS_LOADED = True
 except (ImportError, OSError):
     MCS_LOADED = False
-
-
-class Axis_Ch123(Enum):
-    """Enumerate different channels. Each channel represents one axis."""
-    X = 0
-    Y = 1
-    Z = 2
-
-class Axis_Ch456(Enum):
-    """Enumerate different channels. Each channel represents one axis."""
-    X = 3
-    Y = 4
-    Z = 5
 
 class Stage6DSmarActMCS2(Stage):
     """Implementation of a SmarAct stage. Communication with the devices using the driver version 2.
@@ -305,7 +293,7 @@ class Stage6DSmarActMCS2(Stage):
         
         if self.open_new_connection:
             self.handle = self._open_system()
-            if self.handle is not 1:
+            if self.handle != 1:
                 raise StageError('Expected the handle to be 1.')
         else:
             self.handle = 1
