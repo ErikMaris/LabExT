@@ -34,7 +34,6 @@ from LabExT.View.Movement import (
     MoveStagesDeviceWindow,
     LoadStoredCalibrationWindow
 )
-from LabExT.View.MovementWizard.MovementWizardController import MovementWizardController
 from LabExT.Wafer.ImportChipWizard import ImportChipWizard
 
 if TYPE_CHECKING:
