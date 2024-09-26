@@ -78,7 +78,6 @@ class MListener:
         self.pgb = None
         self.import_done = False
         self.stage_setup_toplevel = None
-        self.stage_setup_new_toplevel = None
         self.mover_setup_toplevel = None
         self.calibration_setup_toplevel = None
         self.calibration_restore_toplevel = None
@@ -183,15 +182,6 @@ class MListener:
             return
 
         self.stage_setup_toplevel = StageWizard(
-            self._root, self._experiment_manager.mover, experiment_manager=self._experiment_manager
-        )
-
-    def client_setup_stages_new(self):
-        """Open wizard to set up the wizard stages."""
-        if try_to_lift_window(self.stage_setup_new_toplevel):
-            return
-
-        self.stage_setup_new_toplevel = MovementWizardController(
             self._root, self._experiment_manager.mover, experiment_manager=self._experiment_manager
         )
 

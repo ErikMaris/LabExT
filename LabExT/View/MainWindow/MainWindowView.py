@@ -74,7 +74,6 @@ class MainWindowContextMenu(Menu):
             self._movement.add_separator()
 
         self._movement.add_command(label="Configure Stages...", command=self._menu_listener.client_setup_stages)
-
         self._movement.add_command(
             label="Configure Mover...",
             command=self._menu_listener.client_setup_mover,
