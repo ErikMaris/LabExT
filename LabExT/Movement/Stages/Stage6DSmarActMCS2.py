@@ -16,6 +16,8 @@ from LabExT.View.Controls.DriverPathDialog import DriverPathDialog
 
 from LabExT.Utils import try_to_lift_window
 
+_OPEN_6D_MCS2_HANDLE = None # stores driver handle
+
 try:
     import smaract.ctl as ctl
     MCS_LOADED = True
@@ -252,7 +254,7 @@ class Stage6DSmarActMCS2(Stage):
     # Setup and initialization
 
     def __init__(self, address):
-        """Constructs all necessary attributes of the Stage3DSmarActMCS2 object.
+        """Constructs all necessary attributes of the Stage6DSmarActMCS2 object.
         Calls stage super class to complete initialization.
         """
         self.handle = None
@@ -291,12 +293,14 @@ class Stage6DSmarActMCS2(Stage):
             self._logger.debug('Stage is already connected.')
             return True
         
+        global _OPEN_6D_MCS2_HANDLE
         if self.open_new_connection:
-            self.handle = self._open_system()
-            if self.handle != 1:
-                raise StageError('Expected the handle to be 1.')
+            if _OPEN_6D_MCS2_HANDLE is not None:
+                raise StageError('Currently only one concurrent 6D MCS2 module is supported. Cannot connect to second module.')
+            _OPEN_6D_MCS2_HANDLE = self._open_system()
+            self.handle = _OPEN_6D_MCS2_HANDLE
         else:
-            self.handle = 1
+            self.handle = _OPEN_6D_MCS2_HANDLE
 
         if self.handle is not None:
             for ch in self.Axis:
